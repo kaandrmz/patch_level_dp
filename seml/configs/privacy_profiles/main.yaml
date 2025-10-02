@@ -1,0 +1,52 @@
+seml:
+  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  executable: seml/scripts/run_privacy_profile.py
+  output_dir: seml/output/logs/privacy_profiles
+  name: privacy_profile_experiments
+
+slurm:
+  - experiments_per_job: 3
+    sbatch_options:
+      cpus-per-task: 5
+      time: 00-02:00     # max time, D-HH:MM
+      partition: cpu_large
+
+fixed:
+  experiment_set: "main"
+  image_size: [1000, 1000]
+  padding: 0
+  clip_norm: 2.0
+  batch_size: 100
+  epoch_size: 3000
+  num_epochs: 100
+  
+  epsilon_min: 0.1
+  epsilon_max: 1000.0
+  epsilon_num_points: 50
+
+grid:
+  crop_size:
+    type: choice
+    options:
+      - 100
+      - 200
+      - 400
+
+  private_patch_size:
+    type: choice
+    options:
+      - 10
+      - 20
+      - 40
+
+  noise_level:
+    type: choice
+    options:
+      - 1.0
+      - 2.0
+      - 4.0
+
+  sigma_data:
+    type: choice
+    options:
+      - 1000.0

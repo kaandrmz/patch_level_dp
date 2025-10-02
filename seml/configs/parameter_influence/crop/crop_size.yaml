@@ -1,0 +1,67 @@
+seml:
+  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  executable: seml/scripts/run_crop_size.py
+  output_dir: seml/output/logs/parameter_influence_crop_size_all
+  name: parameter_influence_crop_size_all_experiments
+
+slurm:
+  # Image size 1000x1000 with crop sizes up to 700
+  - experiments_per_job: 5
+    sbatch_options:
+      cpus-per-task: 5
+      time: 00-02:00
+      partition: cpu_large
+  # Image size 1000x2000 with crop sizes up to 1000
+  - experiments_per_job: 5
+    sbatch_options:
+      cpus-per-task: 5
+      time: 01-12:00
+      partition: cpu_large
+
+fixed:
+  padding: 0
+  clip_norm: 2.0
+  batch_size: 100
+  epoch_size: 3000
+  num_epochs: 100
+  fixed_delta: 1e-5
+  fixed_private_patch_size: [10, 10]
+
+grid:
+  noise_level:
+    type: choice
+    options:
+      - 1.0
+      - 1.5
+      - 2.0
+      - 2.5
+      - 3.0
+      - 3.5
+      - 4.0
+      - 4.5
+      - 5.0
+
+image_size_1000x1000:
+  grid:
+    image_size:
+      type: choice
+      options:
+        - [1000, 1000]
+    crop_size:
+      type: uniform
+      min: 10
+      max: 700
+      num: 20
+
+image_size_1000x2000:
+  grid:
+    image_size:
+      type: choice
+      options:
+        - [1000, 2000]
+    crop_size:
+      type: uniform
+      min: 10
+      max: 1000
+      num: 20
+

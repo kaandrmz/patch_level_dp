@@ -1,0 +1,21 @@
+# uv venv --python 3.11
+
+torch==2.4.1
+torchvision==0.19.1
+torchaudio==2.4.1
+lightning==2.1.4
+pytorch-lightning==2.1.4
+opacus==1.5.1
+dp-accounting==0.4.4
+numpy==1.26.4
+scipy==1.10.1
+pillow==10.4.0
+pyyaml==6.0.1
+matplotlib==3.8.4
+tqdm==4.66.4
+sacred==0.8.6
+scikit-learn==1.7.2
+pandas==2.2.3
+seml
+rich<13.0.0
+visdom

@@ -1,0 +1,79 @@
+seml:
+  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  executable: seml/scripts/run_padding.py
+  output_dir: seml/output/logs/parameter_influence_padding_all
+  name: parameter_influence_padding_all_experiments
+
+slurm:
+  - experiments_per_job: 5
+    sbatch_options:
+      cpus-per-task: 5
+      time: 00-02:00
+      partition: cpu_large
+
+fixed:
+  image_size: [1000, 1000]
+  clip_norm: 2.0
+  batch_size: 100
+  epoch_size: 3000
+  num_epochs: 100
+  target_delta: 1e-5
+  fixed_delta: 1e-5
+
+grid:
+  padding_value:
+    type: choice
+    options:
+      - 0
+      - 5
+      - 10
+      - 15
+      - 20
+      - 25
+      - 30
+      - 35
+      - 40
+      - 45
+      - 50
+
+crop_variation:
+  fixed:
+    experiment_set: "crop_variation"
+    private_patch_size: 10
+    noise_levels: [4.0, 4.5, 5.0]
+    noise_labels: ["4", "4.5", "5"]
+  grid:
+    crop_size:
+      type: choice
+      options:
+        - 400
+        - 450
+        - 500
+
+noise_variation:
+  fixed:
+    experiment_set: "noise_variation"
+    crop_size: 500
+    private_patch_size: 20
+  grid:
+    noise_set:
+      type: choice
+      options:
+        - "high"      # [4.0, 4.5, 5.0]
+        - "medium"    # [2.5, 3.0, 3.5]  
+        - "low"       # [1.0, 1.5, 2.0]
+
+patch_variation:
+  fixed:
+    experiment_set: "patch_variation"
+    crop_size: 500
+    noise_levels: [4.0, 4.5, 5.0]
+    noise_labels: ["4", "4.5", "5"]
+  grid:
+    private_patch_size:
+      type: choice
+      options:
+        - 10
+        - 20
+        - 40
+

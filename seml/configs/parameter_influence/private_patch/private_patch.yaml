@@ -1,0 +1,48 @@
+seml:
+  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  executable: seml/scripts/run_private_patch.py
+  output_dir: seml/output/logs/parameter_influence_private_patch_all
+  name: parameter_influence_private_patch_all_experiments
+
+slurm:
+  experiments_per_job: 5
+  sbatch_options:
+    cpus-per-task: 5
+    time: 00-02:00
+    partition: cpu_large
+
+fixed:
+  padding: 0
+  clip_norm: 2.0
+  batch_size: 100
+  epoch_size: 3000
+  num_epochs: 100
+  fixed_delta: 1e-5
+  fixed_crop_size: [450, 450]
+
+grid:
+  image_size:
+    type: choice
+    options:
+      - [1000, 1000]
+      - [1000, 2000]
+
+  noise_level:
+    type: choice
+    options:
+      - 1.0
+      - 1.5
+      - 2.0
+      - 2.5
+      - 3.0
+      - 3.5
+      - 4.0
+      - 4.5
+      - 5.0
+
+  private_patch_size:
+    type: uniform
+    min: 1
+    max: 120
+    num: 20
+
