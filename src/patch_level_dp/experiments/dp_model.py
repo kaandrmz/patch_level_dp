@@ -36,10 +36,8 @@ class DebugSGD(optim.SGD):
                                      nesterov=nesterov)
         self.step_count = 0
         self.lr = lr
-        print(f"DebugSGD initialized with lr: {lr} and momentum: {momentum}")
 
     def step(self, closure=None):
-        print(f"DEBUG: DebugSGD step called")
         self.step_count += 1
         print(f"SGD step #{self.step_count} called with lr: {self.lr}")
         return super(DebugSGD, self).step(closure)
