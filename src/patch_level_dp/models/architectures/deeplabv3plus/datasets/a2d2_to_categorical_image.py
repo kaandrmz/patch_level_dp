@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # the safety of 'spawn' and the speed of 'fork', especially on NFS.
     mp.set_start_method('forkserver', force=True)
 
-    data_path="/nfs/students/duk/camera_lidar_semantic"
+    data_path="/nfs/students/anon/camera_lidar_semantic"
     
     # --- Create the color-to-class-ID mapping once in the main process ---
     class_list_file = os.path.join(data_path, "class_list.json")

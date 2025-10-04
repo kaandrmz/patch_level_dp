@@ -34,7 +34,7 @@ def train_dp_model(
     standard_deviation: Optional[float] = None,
     resume_from_checkpoint: Optional[str] = None,
     seed_value: int = 516,
-    checkpoint_dir: str = "/nfs/students/duk/checkpoints",
+    checkpoint_dir: str = "/nfs/students/anon/checkpoints",
     check_val_every_n_epoch: int = 2,
     num_sanity_val_steps: int = 0,
     **kwargs

@@ -1,5 +1,5 @@
 seml:
-  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  project_root_dir: /nfs/homedirs/anon/patch_level_dp
   executable: seml/scripts/run_crop_size.py
   output_dir: seml/output/logs/parameter_influence_crop_size_all
   name: parameter_influence_crop_size_all_experiments

@@ -89,7 +89,7 @@ def run(
     delta: float = None,
     baseline_privacy: bool = False,
     seed_value: int = 516,
-    checkpoint_dir: str = "/nfs/students/duk/checkpoints",
+    checkpoint_dir: str = "/nfs/students/anon/checkpoints",
     check_val_every_n_epoch: int = 2,
     num_sanity_val_steps: int = 0,
     **kwargs

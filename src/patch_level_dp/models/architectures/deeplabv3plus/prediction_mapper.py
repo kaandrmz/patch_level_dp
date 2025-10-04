@@ -207,8 +207,8 @@ def map_predictions_to_raw_ids(model_path, output_dir, num_samples=None):
                 print(f"  Class {class_id} ({class_name}): {iou:.4f}")
 
 if __name__ == "__main__":
-    model_path = "/nfs/homedirs/duk/DeepLabV3Plus-Pytorch/checkpoints_no_batchnorm/deeplabv3_no_bn_crop_512_best_miou.ckpt"
-    output_dir = "/nfs/homedirs/duk/DeepLabV3Plus-Pytorch/test_predictions"
+    model_path = "/nfs/homedirs/anon/DeepLabV3Plus-Pytorch/checkpoints_no_batchnorm/deeplabv3_no_bn_crop_512_best_miou.ckpt"
+    output_dir = "/nfs/homedirs/anon/DeepLabV3Plus-Pytorch/test_predictions"
     
     # Process 5 test images
     map_predictions_to_raw_ids(model_path, output_dir, num_samples=5) 

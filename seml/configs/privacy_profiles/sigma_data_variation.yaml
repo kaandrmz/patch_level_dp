@@ -1,5 +1,5 @@
 seml:
-  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  project_root_dir: /nfs/homedirs/anon/patch_level_dp
   executable: seml/scripts/run_privacy_profile.py
   output_dir: seml/output/logs/privacy_profiles_sigma_data
   name: privacy_profile_sigma_data_experiments

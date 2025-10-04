@@ -1,5 +1,5 @@
 seml:
-  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  project_root_dir: /nfs/homedirs/anon/patch_level_dp
   executable: seml/scripts/run_training_experiment.py
   output_dir: seml/output/logs/deeplabv3plus_cityscapes
   name: deeplabv3plus_cityscapes_experiments
@@ -29,7 +29,7 @@ fixed:
   
   check_val_every_n_epoch: 2
   num_sanity_val_steps: 0
-  checkpoint_dir: "/nfs/students/duk/checkpoints"
+  checkpoint_dir: "/nfs/students/anon/checkpoints"
 
 grid:
   epsilon:

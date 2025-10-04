@@ -21,11 +21,11 @@ def get_argparser():
     
     # Model options
     parser.add_argument("--ckpt", type=str, 
-                        default="/nfs/homedirs/duk/DeepLabV3Plus-Pytorch/checkpoints_no_batchnorm/deeplabv3_no_bn_crop_512_best_miou.ckpt",
+                        default="/nfs/homedirs/anon/DeepLabV3Plus-Pytorch/checkpoints_no_batchnorm/deeplabv3_no_bn_crop_512_best_miou.ckpt",
                         help="Path to model checkpoint")
     
     # Output options
-    parser.add_argument("--output_dir", type=str, default="/nfs/homedirs/duk/DeepLabV3Plus-Pytorch/test_predictions",
+    parser.add_argument("--output_dir", type=str, default="/nfs/homedirs/anon/DeepLabV3Plus-Pytorch/test_predictions",
                         help="Output directory for predictions")
     parser.add_argument("--num_samples", type=int, default=5,
                         help="Number of test samples to process")
