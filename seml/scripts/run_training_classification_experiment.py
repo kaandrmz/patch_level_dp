@@ -1,10 +1,10 @@
-"""SEML script for training DP segmentation models with the new modular structure."""
+"""SEML script for training DP classification models."""
 
 import math
 from typing import Dict, Any
 
 from seml import Experiment
-from patch_level_dp.experiments import train_dp_model, test_dp_model
+from patch_level_dp.experiments import train_dp_classification_model, test_dp_classification_model
 
 
 ex = Experiment()
@@ -40,13 +40,11 @@ def init_privacy_kwargs(
         Dictionary with initialized parameters
     """
     epoch_sizes = {
-        "cityscapes": 2975,
-        "a2d2": 18557,
         "mnist": 60000,
         "dtd": 1879,
     }
     
-    epoch_size = epoch_sizes.get(dataset_name, 2975)
+    epoch_size = epoch_sizes.get(dataset_name, 60000)
     if dataset_name not in epoch_sizes:
         print(f"Warning: Unknown dataset {dataset_name}, using default epoch_size={epoch_size}")
     
@@ -90,13 +88,14 @@ def run(
     batch_sampling_prob: float = None,
     delta: float = None,
     baseline_privacy: bool = False,
+    pretrained: bool = False,
     seed_value: int = 516,
     checkpoint_dir: str = "/nfs/students/duk/checkpoints",
     check_val_every_n_epoch: int = 2,
     num_sanity_val_steps: int = 0,
     **kwargs
 ) -> Dict[str, Any]:
-    """Main SEML experiment function for training DP segmentation models."""
+    """Main SEML experiment function for training DP classification models."""
     
     print(f"Training {model_name} on {dataset_name} with epsilon={epsilon}")
     print(f"Dataset root: {dataset_root}")
@@ -105,6 +104,7 @@ def run(
     print(f"Clip norm: {clip_norm}, Max physical batch size: {max_physical_batch_size}")
     print(f"Privacy patch size: {privacy_patch_size}")
     print(f"Baseline privacy: {baseline_privacy}")
+    print(f"Pretrained: {pretrained}")
     print(f"Seed: {seed_value}")
     
     train_params = init_privacy_kwargs(
@@ -121,6 +121,7 @@ def run(
         crop_size=crop_size,
         padding=padding,
         baseline_privacy=baseline_privacy,
+        pretrained=pretrained,
         seed_value=seed_value,
         checkpoint_dir=checkpoint_dir,
         check_val_every_n_epoch=check_val_every_n_epoch,
@@ -132,15 +133,15 @@ def run(
     for key, value in train_params.items():
         print(f"  {key}: {value}")
     
-    results = train_dp_model(**train_params)
+    results = train_dp_classification_model(**train_params)
     
     print(f"\nTraining completed!")
     print(f"Final epsilon: {results['epsilon']}")
-    print(f"Best validation mIoU: {results.get('best_val_miou', 'N/A')}")
+    print(f"Best validation accuracy: {results.get('best_val_acc', 'N/A')}")
     
     if results.get('best_model_loaded', False):
         print("\nTesting best model...")
-        test_results = test_dp_model(
+        test_results = test_dp_classification_model(
             model=results['model'],
             dataset_root=dataset_root,
             batch_size=batch_size
@@ -151,9 +152,8 @@ def run(
     return {
         "final_epsilon": results['epsilon'],
         "final_delta": results['delta'],
-        "best_val_miou": results.get('best_val_miou'),
+        "best_val_acc": results.get('best_val_acc'),
         "test_acc": results.get('test_acc'),
-        "test_miou": results.get('test_miou'),
         "test_loss": results.get('test_loss'),
         "best_model_loaded": results.get('best_model_loaded', False),
         "checkpoint_path": results.get('best_model_path'),

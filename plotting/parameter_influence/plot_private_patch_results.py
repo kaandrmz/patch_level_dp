@@ -129,9 +129,8 @@ def plot_private_patch_results(
         'font.family': 'serif'
     })
 
-    # Colors matching experiment.py
-    plot_colors = ['#377eb8', '#ff7f0e', '#4daf4a']  # Blue, Orange, Green
-    baseline_colors = ['#a6cee3', '#fdbf6f', '#b2df8a']  # Lighter shades
+    plot_colors = ['#377eb8', '#ff7f0e', '#4daf4a']
+    baseline_colors = ['#a6cee3', '#fdbf6f', '#b2df8a']
 
     noise_labels = [format_noise_label(nl) for nl in noise_levels]
 
@@ -145,7 +144,6 @@ def plot_private_patch_results(
         patch_sizes = sorted(results_by_noise[noise_level].keys())
         epsilons = [results_by_noise[noise_level][ps] for ps in patch_sizes]
 
-        # Filter out infinite values
         valid_points = [(ps, eps) for ps, eps in zip(patch_sizes, epsilons) if eps != float('inf')]
         if valid_points:
             valid_patch_sizes, valid_epsilons = zip(*valid_points)
@@ -154,7 +152,6 @@ def plot_private_patch_results(
         else:
             print(f"Warning: No valid points for noise level {noise_level}")
 
-        # Plot baseline (intersection_prob=1)
         baseline_eps = calculate_baseline_epsilon(noise_level, common_params)
         if baseline_eps != float('inf'):
             ax.axhline(y=baseline_eps, color=baseline_colors[noise_idx],
@@ -164,14 +161,11 @@ def plot_private_patch_results(
     ax.set_ylabel(r'$\varepsilon$', labelpad=15)
     ax.grid(True, which="both", ls="-", alpha=0.3)
 
-    # Create custom legends (matching experiment.py style)
-    # Top-left legend for line styles
     legend1_lines = [Line2D([0], [0], color='black', lw=2, linestyle='-'),
                      Line2D([0], [0], color='black', lw=2, linestyle='--')]
     legend1_labels = ['Patch-Level Subsampling', 'Minibatch Subsampling']
     ax.legend(legend1_lines, legend1_labels, loc='upper left')
 
-    # Bottom-right legend for noise levels
     legend2_lines = [Line2D([0], [0], color=plot_colors[i], lw=2) for i in range(len(noise_levels))]
     legend2_labels = [f'{noise_labels[i]}' for i in range(len(noise_levels))]
     leg2 = Legend(ax, legend2_lines, legend2_labels, loc='lower right', title=r'$\sigma$')
@@ -183,7 +177,6 @@ def plot_private_patch_results(
 
     plt.tight_layout()
 
-    # Filename format matching experiment.py
     filename = f'experiment_eps_vs_priv_patch_size_delta{common_params["fixed_delta"]:.0e}_noise{noise_levels[0]}_imgw{image_width}_two.pdf'
     filepath = os.path.join(output_dir, filename)
     plt.savefig(filepath, dpi=300, bbox_inches='tight')
@@ -298,23 +291,17 @@ def main():
     """Main plotting function for private patch experiments."""
     print("=== Plotting Private Patch Results ===")
 
-    # Define noise level groups (as used in experiment.py)
     noise_groups = [
         [1.0, 1.5, 2.0],
         [2.5, 3.0, 3.5],
         [4.0, 4.5, 5.0]
     ]
 
-    # Output directory for plots
     output_dir = "output/plots/parameter_influence/private_patch"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Plot collections - can use either consolidated or separate collections
     collections_to_plot = [
-        "parameter_influence_private_patch_all_experiments",  # Consolidated (preferred)
-        # Or separate collections:
-        # "parameter_influence_private_patch_imgw1000_experiments",
-        # "parameter_influence_private_patch_imgw2000_experiments"
+        "rebut_priv_patch",
     ]
 
     for collection_name in collections_to_plot:

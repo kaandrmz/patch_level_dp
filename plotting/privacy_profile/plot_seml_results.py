@@ -142,7 +142,7 @@ def main():
     output_dir = "output/plots/privacy_profile"
 
     print("=== Processing Main Privacy Profile Experiments ===")
-    main_results = get_seml_results("privacy_profile_experiments")
+    main_results = get_seml_results("rebut_priv_prof_main")
     if main_results:
         processed_main = process_privacy_profile_results(main_results)
         print(f"Processing {len(processed_main)} main experiment configurations")
@@ -152,7 +152,7 @@ def main():
         print("No main privacy profile results found")
 
     print("\n=== Processing Sigma Data Variation Experiments ===")
-    sigma_data_results = get_seml_results("privacy_profile_sigma_data_experiments")
+    sigma_data_results = get_seml_results("rebut_priv_prof_sigma")
     if sigma_data_results:
         processed_sigma_data = process_privacy_profile_results(sigma_data_results)
         print(f"Processing {len(processed_sigma_data)} sigma data variation configurations")
@@ -162,7 +162,7 @@ def main():
         print("No sigma data variation privacy profile results found")
 
     print("\n=== Processing Large Image Experiments ===")
-    large_results = get_seml_results("privacy_profile_large_image_experiments")
+    large_results = get_seml_results("rebut_priv_prof_large")
     if large_results:
         processed_large = process_privacy_profile_results(large_results)
         print(f"Processing {len(processed_large)} large image configurations")

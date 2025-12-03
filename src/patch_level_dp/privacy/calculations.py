@@ -198,7 +198,7 @@ def _calc_sampling_prob(
     baseline_privacy: bool = False,
 ) -> float:
     """Helper to calculate the effective sampling probability."""
-    if baseline_privacy:
+    if baseline_privacy: # CLASSIC ANALYSIS
         sampling_prob = batch_sampling_prob
         print(f"Baseline privacy: using minibatch sampling instead of patch-level sampling")
         return sampling_prob
@@ -211,7 +211,7 @@ def _calc_sampling_prob(
     )
     print(f"Intersection Probability: {intersection_prob}")
 
-    sampling_prob = intersection_prob * batch_sampling_prob
+    sampling_prob = intersection_prob * batch_sampling_prob # OUR ANALYSIS
     print(f"Effective Sampling Probability: {sampling_prob}")
     return sampling_prob
 

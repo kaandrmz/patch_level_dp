@@ -1,4 +1,4 @@
-"""Main experiment function for DP model training (segmentation and classification)."""
+"""Training function for DP classification models."""
 
 import os
 import math
@@ -9,13 +9,14 @@ from torch.utils.data import DataLoader
 
 import lightning as L
 from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
 
 from ..data import ALL_DATASET_CONFIGS
 from ..privacy import DPDataLoader, UniformWithoutReplacementSampler
-from .dp_model import DPSegmentationModel
+from .dp_classification_model import DPClassificationModel
 
 
-def train_dp_model(
+def train_dp_classification_model(
     model_name: str,
     dataset_name: str,
     dataset_root: str,
@@ -32,6 +33,7 @@ def train_dp_model(
     privacy_patch_size: Tuple[int, int] = (10, 10),
     padding: int = 0,
     standard_deviation: Optional[float] = None,
+    baseline_privacy: bool = False,
     resume_from_checkpoint: Optional[str] = None,
     seed_value: int = 516,
     checkpoint_dir: str = "/nfs/students/duk/checkpoints",
@@ -39,11 +41,11 @@ def train_dp_model(
     num_sanity_val_steps: int = 0,
     **kwargs
 ) -> Dict[str, Any]:
-    """Train a DP model (segmentation or classification).
+    """Train a DP classification model.
     
     Args:
-        model_name: Model architecture name (e.g., "deeplabv3plus", "pspnet", "resnet18", "simpleconv")
-        dataset_name: Dataset name (e.g., "cityscapes", "a2d2", "mnist", "dtd")
+        model_name: Model architecture name (e.g., "resnet18", "simpleconv")
+        dataset_name: Dataset name (e.g., "mnist", "dtd")
         dataset_root: Root directory for dataset
         epsilon: Privacy budget epsilon
         delta: Privacy budget delta (if None, calculated as 1.0 / epoch_size)
@@ -63,7 +65,7 @@ def train_dp_model(
         checkpoint_dir: Directory to save checkpoints
         check_val_every_n_epoch: How often to run validation
         num_sanity_val_steps: Number of sanity validation steps
-        **kwargs: Additional model-specific arguments
+        **kwargs: Additional model-specific arguments (e.g., baseline_privacy)
         
     Returns:
         Dictionary with training results including model, epsilon, and metrics
@@ -71,6 +73,7 @@ def train_dp_model(
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     L.seed_everything(seed_value)
     
+    # Get dataset config
     if dataset_name not in ALL_DATASET_CONFIGS:
         available = list(ALL_DATASET_CONFIGS.keys())
         raise ValueError(f"Unknown dataset '{dataset_name}'. Available: {available}")
@@ -115,7 +118,7 @@ def train_dp_model(
     num_queries = math.ceil(epoch_size / batch_size) * num_epochs
     print(f"Privacy parameters: epoch_size={epoch_size}, delta={delta}, batch_sampling_prob={batch_sampling_prob}, num_queries={num_queries}")
     
-    model = DPSegmentationModel(
+    model = DPClassificationModel(
         model_name=model_name,
         dataset_name=dataset_name,
         epsilon=epsilon,
@@ -132,17 +135,30 @@ def train_dp_model(
         padding=padding,
         lr=lr,
         standard_deviation=standard_deviation,
+        baseline_privacy=baseline_privacy,
         **kwargs
     )
     
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir,
-        filename=f'best-{model_name}-{dataset_name}' + '-{epoch:02d}-{val_miou:.4f}',
-        monitor='val_miou',
+        filename=f'best-{model_name}-{dataset_name}' + '-{epoch:02d}-{val_acc:.4f}',
+        monitor='val_acc',
         save_top_k=1,
         mode='max',
         save_weights_only=False
     )
+    
+    # Create logger with meaningful experiment name
+    experiment_name = f"{model_name}_{dataset_name}_clip{clip_norm}_lr{lr}_eps{epsilon}"
+    if baseline_privacy:
+        experiment_name += "_baseline"
+    
+    logger = TensorBoardLogger(
+        save_dir="lightning_logs",
+        name=experiment_name,
+        default_hp_metric=False,
+    )
+    print(f"Logging to: lightning_logs/{experiment_name}")
     
     trainer = L.Trainer(
         accelerator="auto", 
@@ -151,6 +167,7 @@ def train_dp_model(
         max_epochs=num_epochs, 
         check_val_every_n_epoch=check_val_every_n_epoch,
         callbacks=[checkpoint_callback],
+        logger=logger,
         num_sanity_val_steps=num_sanity_val_steps
     )
     
@@ -164,14 +181,14 @@ def train_dp_model(
         "epsilon": final_epsilon,
         "delta": delta,
         "best_model_path": checkpoint_callback.best_model_path,
-        "best_val_miou": float(checkpoint_callback.best_model_score) if checkpoint_callback.best_model_score else None,
+        "best_val_acc": float(checkpoint_callback.best_model_score) if checkpoint_callback.best_model_score else None,
     }
     
     if checkpoint_callback.best_model_path:
         print(f"Loading best model from {checkpoint_callback.best_model_path} "
-              f"with val_miou: {checkpoint_callback.best_model_score:.4f}")
+              f"with val_acc: {checkpoint_callback.best_model_score:.4f}")
         
-        best_model = DPSegmentationModel.load_from_checkpoint(
+        best_model = DPClassificationModel.load_from_checkpoint(
             checkpoint_callback.best_model_path,
             train_loader=train_loader
         )
@@ -187,16 +204,16 @@ def train_dp_model(
     return results
 
 
-def test_dp_model(
-    model: DPSegmentationModel,
+def test_dp_classification_model(
+    model: DPClassificationModel,
     dataset_root: str,
     batch_size: int = 8,
     **kwargs
 ) -> Dict[str, Any]:
-    """Test a trained DP segmentation model.
+    """Test a trained DP classification model.
     
     Args:
-        model: Trained DP segmentation model
+        model: Trained DP classification model
         dataset_root: Root directory for dataset  
         batch_size: Batch size for testing
         **kwargs: Additional arguments
@@ -226,6 +243,5 @@ def test_dp_model(
     return {
         "test_results": test_results,
         "test_acc": test_results[0].get("test_acc", None),
-        "test_miou": test_results[0].get("test_miou", None),
         "test_loss": test_results[0].get("test_loss", None),
     }

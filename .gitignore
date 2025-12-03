@@ -7,3 +7,4 @@ build
 preview*.png
 *.pq
 .venv
+output/*

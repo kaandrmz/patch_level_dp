@@ -29,37 +29,26 @@ def process_single_label(label_path, reduced_mapping):
     Loads an RGB label image, converts it to a categorical format using the provided
     mapping, and saves the result. This is a top-level function to allow pickling.
     """
-    # Determine the save path and check if the file already exists
     save_path = label_path.replace("/label/", "/categorical_label/")
     if os.path.exists(save_path):
-        # print(f"Skipping: {label_path} because it already exists")
-        return  # Skip if already processed
+        return
 
-    # Load the original RGB label image
     img = load_image(label_path)
     
-    # Convert the RGB image to a 1D hex representation
     hexa = np.vectorize("{:02x}".format)
     image_1dhexa = np.sum(hexa(img).astype(object), axis=-1)
     
-    # Map the hex values to categorical class IDs
-    # The lambda function ensures that any unknown hex code defaults to 255 (the ignore_index)
     categorical = np.vectorize(lambda x: reduced_mapping.get(x, 255))(image_1dhexa).astype(np.uint8)
     
-    # Write the new label to the save path
     write_image(save_path, categorical)
-    # Print progress for each file
     print(f"Processed: {label_path}")
 
 
 if __name__ == "__main__":
-    # Use the 'forkserver' start method. It's a good compromise between
-    # the safety of 'spawn' and the speed of 'fork', especially on NFS.
     mp.set_start_method('forkserver', force=True)
 
-    data_path="/nfs/students/anon/camera_lidar_semantic"
+    data_path="/nfs/students/duk/camera_lidar_semantic"
     
-    # --- Create the color-to-class-ID mapping once in the main process ---
     class_list_file = os.path.join(data_path, "class_list.json")
     with open(class_list_file, "r") as f:
         class_colour_mapping = json.load(f)
@@ -78,9 +67,7 @@ if __name__ == "__main__":
         k: class_groups_mapping[v] for k, v in class_colour_mapping.items()
     }
     reduced_mapping = {k.replace("#", ""): v for k, v in colour_to_class_group_id.items()}
-    # --- End of mapping creation ---
     
-    # Combine all sessions to process every relevant file
     all_sessions = TRAIN_SESSIONS + VAL_SESSIONS + TEST_SESSIONS
     
     print("Searching for files in specified sessions...")
@@ -90,7 +77,6 @@ if __name__ == "__main__":
         glob_path = f"{session_path}/camera/cam_*/*.png"
         image_files = glob.glob(glob_path)
         
-        # Derive label paths from the found image paths
         label_paths = [p.replace('/camera/', '/label/').replace('_camera_', '_label_') for p in image_files]
         file_list.extend(label_paths)
         

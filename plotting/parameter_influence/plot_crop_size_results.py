@@ -301,7 +301,7 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     collections_to_plot = [
-        "parameter_influence_crop_size_all_experiments",
+        "rebut_crop_3000"
     ]
 
     for collection_name in collections_to_plot:

@@ -1,0 +1,75 @@
+seml:
+  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  executable: seml/scripts/run_training_classification_experiment.py
+  output_dir: seml/output/logs/resnet_dtd
+  name: resnet_dtd_experiments
+
+slurm:
+  - experiments_per_job: 1
+    sbatch_options:
+      gres: gpu:1
+      cpus-per-task: 5
+      time: 00-23:59     # max time, D-HH:MM
+      partition: gpu_gtx1080
+
+fixed:
+  model_name: "resnet18"
+  dataset_name: "dtd"
+  dataset_root: "/nfs/homedirs/duk/dtd"
+  pretrained: True
+  
+  max_physical_batch_size: 32
+  batch_size: 32 # currently same as max_physical_batch_size
+  num_epochs: 60
+  
+  
+  privacy_patch_size: [10, 10]
+  crop_size: 300 # currently same size as normal image size
+  padding: 0
+  
+  check_val_every_n_epoch: 2
+  num_sanity_val_steps: 0
+  checkpoint_dir: "/nfs/students/duk/checkpoints"
+
+grid:
+  clip_norm:
+    type: choice
+    options:
+      # - 0.01
+      # - 0.1
+      # - 1
+      # - 10
+      # - 100
+      - 1000
+  lr: 
+    type: choice
+    options:
+      - 0.001 #for Adam
+      # - 0.01 #for SGD
+      # - 0.02
+      # - 0.05
+      # - 0.08
+    
+  epsilon:
+    type: choice
+    options:
+      - 1
+      # - 2
+      # - 4
+      # - 8
+      # - 16
+      # - 32
+
+  seed_value:
+    type: choice
+    options:
+      # - 10
+      # - 20
+      # - 30
+      - 516
+
+  baseline_privacy:
+    type: choice
+    options:
+      # - False
+      - True

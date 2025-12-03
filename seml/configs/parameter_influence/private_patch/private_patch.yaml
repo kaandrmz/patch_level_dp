@@ -1,5 +1,5 @@
 seml:
-  project_root_dir: /nfs/homedirs/anon/patch_level_dp
+  project_root_dir: /nfs/homedirs/duk/patch_level_dp
   executable: seml/scripts/run_private_patch.py
   output_dir: seml/output/logs/parameter_influence_private_patch_all
   name: parameter_influence_private_patch_all_experiments
@@ -8,14 +8,14 @@ slurm:
   experiments_per_job: 5
   sbatch_options:
     cpus-per-task: 5
-    time: 00-02:00
+    time: 01-12:00
     partition: cpu_large
 
 fixed:
   padding: 0
   clip_norm: 2.0
   batch_size: 100
-  epoch_size: 3000
+  epoch_size: 1e5
   num_epochs: 100
   fixed_delta: 1e-5
   fixed_crop_size: [450, 450]

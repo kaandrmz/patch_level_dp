@@ -1,30 +1,30 @@
 seml:
   project_root_dir: /nfs/homedirs/duk/patch_level_dp
-  executable: seml/scripts/train_dp_model.py
-  output_dir: seml/output/logs/pspnet_cityscapes
-  name: pspnet_cityscapes_experiments
+  executable: seml/scripts/run_training_classification_experiment.py
+  output_dir: seml/output/logs/simpleconv_mnist
+  name: simpleconv_mnist_experiments
 
 slurm:
   - experiments_per_job: 1
     sbatch_options:
       gres: gpu:1
       cpus-per-task: 5
-      time: 02-23:59     # max time, D-HH:MM
+      time: 00-23:59     # max time, D-HH:MM
       partition: gpu_gtx1080
 
 fixed:
-  model_name: "pspnet"
-  dataset_name: "cityscapes"
-  dataset_root: "/nfs/shared/cityscapes"
+  model_name: "simpleconv"
+  dataset_name: "mnist"
+  dataset_root: "/nfs/shared/data"
   
-  max_physical_batch_size: 2
-  clip_norm: 2.0
-  batch_size: 200
-  num_epochs: 100
-  lr: 0.02
+  max_physical_batch_size: 128
+  clip_norm: 1.0
+  batch_size: 256
+  num_epochs: 50
+  lr: 0.01
   
   privacy_patch_size: [10, 10]
-  crop_size: 505
+  crop_size: 24
   padding: 0
   
   check_val_every_n_epoch: 2
@@ -35,18 +35,12 @@ grid:
   epsilon:
     type: choice
     options:
-      - 5
-      - 10
-      - 15
-      - 20
-      - 30
-      - 40
-      - 50
-      - 60
-      - 70
-      - 80
-      - 90
-      - 100
+      - 1
+      - 2
+      - 4
+      - 8
+      - 16
+      - 32
 
   seed_value:
     type: choice

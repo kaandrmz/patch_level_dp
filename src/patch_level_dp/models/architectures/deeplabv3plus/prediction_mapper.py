@@ -14,20 +14,16 @@ def create_train_id_to_raw_id_map():
     """
     Create a mapping from train_ids (0-18) back to raw ids based on Cityscapes class definitions
     """
-    # Based on the Cityscapes classes in cityscapes.py
-    # Find the raw_id for each train_id
     train_id_to_raw_id = {}
     
     for cls in Cityscapes.classes:
         raw_id = cls.id
         train_id = cls.train_id
         
-        # Skip license plate which has id -1
         if raw_id >= 0:
             if train_id not in train_id_to_raw_id:
                 train_id_to_raw_id[train_id] = raw_id
     
-    # Map the ignore class (255) to raw id 0 (unlabeled)
     train_id_to_raw_id[255] = 0
     
     return train_id_to_raw_id
@@ -44,14 +40,11 @@ def calculate_metrics_with_valid_labels(test_dataset, predictions_list, num_clas
     Returns:
         Dictionary with metrics or None if no valid labels found
     """
-    # Create metrics calculator
     metrics = StreamSegMetrics(num_classes)
     
     valid_count = 0
     
     for i, (pred, data_item) in enumerate(zip(predictions_list, test_dataset)):
-        # Handle both tensor and numpy array targets
-        # When using Subset, the target might already be a numpy array
         if isinstance(data_item, tuple):
             _, target = data_item
             if isinstance(target, torch.Tensor):
@@ -59,7 +52,6 @@ def calculate_metrics_with_valid_labels(test_dataset, predictions_list, num_clas
             else:
                 target_np = target
         else:
-            # If data_item is not a tuple, it might be the target itself
             if isinstance(data_item, torch.Tensor):
                 target_np = data_item.cpu().numpy()
             else:
@@ -89,27 +81,22 @@ def map_predictions_to_raw_ids(model_path, output_dir, num_samples=None):
     """
     os.makedirs(output_dir, exist_ok=True)
     
-    # Load the model
     print(f"Loading model from {model_path}")
     model = DeepLabModel.load_from_checkpoint(model_path)
     
-    # Use GPU if available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     model = model.to(device)
     model.eval()
     
-    # Create the train_id to raw_id mapping
     train_id_to_raw_id_map = create_train_id_to_raw_id_map()
     print(f"Created mapping from train_ids to raw_ids: {train_id_to_raw_id_map}")
     
-    # Setup transforms
     test_transforms = et.ExtCompose([
         et.ExtToTensor(),
         et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
     
-    # Load the test dataset
     test_dataset = Cityscapes(
         root='/nfs/shared/cityscapes',
         split='test',
@@ -122,42 +109,35 @@ def map_predictions_to_raw_ids(model_path, output_dir, num_samples=None):
     
     test_loader = DataLoader(
         test_dataset, 
-        batch_size=1,  # Process one at a time for visualization
+        batch_size=1,
         shuffle=False,
         num_workers=2
     )
     
     print(f"Processing {len(test_loader)} test images")
     
-    # Keep track of all predictions for metrics
     all_raw_predictions = []
     
     with torch.no_grad():
         for i, (images, targets) in enumerate(tqdm(test_loader)):
-            # Get model prediction
-            images = images.to(device)  # Move images to the same device as model
+            images = images.to(device)
             outputs = model(images)
             predictions = outputs.max(dim=1)[1].cpu().numpy()
             
-            # Map predictions from train_ids back to raw_ids
             raw_predictions = np.zeros_like(predictions)
             for train_id, raw_id in train_id_to_raw_id_map.items():
-                if train_id == 255:  # Skip ignore class for mapping
+                if train_id == 255:
                     continue
                 raw_predictions[predictions == train_id] = raw_id
             
-            # Save prediction for metrics calculation
             all_raw_predictions.append(raw_predictions[0])
             
-            # Get the original images and targets
             img = images[0].cpu().numpy().transpose(1, 2, 0)
             img = (img * np.array([0.229, 0.224, 0.225]) + np.array([0.485, 0.456, 0.406])) * 255
             img = img.astype(np.uint8)
             
-            # The targets are already in raw_id format for test set
             raw_target = targets[0].cpu().numpy()
             
-            # Create visualization
             plt.figure(figsize=(15, 5))
             
             plt.subplot(1, 3, 1)
@@ -165,7 +145,6 @@ def map_predictions_to_raw_ids(model_path, output_dir, num_samples=None):
             plt.title("Original Image")
             plt.axis('off')
             
-            # Create a masked array for ground truth to show ignored pixels as transparent
             plt.subplot(1, 3, 2)
             masked_gt = np.ma.masked_where(raw_target == 255, raw_target)
             plt.imshow(img)  # Show image underneath
@@ -182,13 +161,11 @@ def map_predictions_to_raw_ids(model_path, output_dir, num_samples=None):
             plt.savefig(os.path.join(output_dir, f"test_prediction_{i}.png"))
             plt.close()
             
-            # Stop after processing specified number of samples
             if num_samples is not None and i >= num_samples - 1:
                 break
     
     print(f"Saved visualizations to {output_dir}")
     
-    # Calculate and print metrics if we have valid labels
     print("\nAttempting to calculate metrics...")
     metrics = calculate_metrics_with_valid_labels(test_dataset, all_raw_predictions)
     
@@ -198,17 +175,14 @@ def map_predictions_to_raw_ids(model_path, output_dir, num_samples=None):
         print(f"Overall Acc: {metrics['Overall Acc']:.4f}")
         print(f"Mean Acc: {metrics['Mean Acc']:.4f}")
         
-        # Print IoU per class 
         print("\nIoU per class:")
         for class_id, iou in metrics['Class IoU'].items():
-            # Only show classes that have predictions
             if not np.isnan(iou) and iou > 0:
                 class_name = next((cls.name for cls in Cityscapes.classes if cls.id == class_id), f"Unknown ({class_id})")
                 print(f"  Class {class_id} ({class_name}): {iou:.4f}")
 
 if __name__ == "__main__":
-    model_path = "/nfs/homedirs/anon/DeepLabV3Plus-Pytorch/checkpoints_no_batchnorm/deeplabv3_no_bn_crop_512_best_miou.ckpt"
-    output_dir = "/nfs/homedirs/anon/DeepLabV3Plus-Pytorch/test_predictions"
+    model_path = "/nfs/homedirs/duk/DeepLabV3Plus-Pytorch/checkpoints_no_batchnorm/deeplabv3_no_bn_crop_512_best_miou.ckpt"
+    output_dir = "/nfs/homedirs/duk/DeepLabV3Plus-Pytorch/test_predictions"
     
-    # Process 5 test images
     map_predictions_to_raw_ids(model_path, output_dir, num_samples=5) 

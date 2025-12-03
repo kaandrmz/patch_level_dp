@@ -204,7 +204,7 @@ def main():
     output_dir = "output/plots/parameter_influence/padding"
 
     print("=== Processing Padding Experiments ===")
-    padding_results = get_seml_results("parameter_influence_padding_all_experiments")
+    padding_results = get_seml_results("rebut_padding")
     if padding_results:
         processed_padding = process_padding_results(padding_results)
         print(f"Processing {len(processed_padding)} padding configurations")

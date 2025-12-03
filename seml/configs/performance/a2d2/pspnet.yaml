@@ -1,5 +1,5 @@
 seml:
-  project_root_dir: /nfs/homedirs/anon/patch_level_dp
+  project_root_dir: /nfs/homedirs/duk/patch_level_dp
   executable: seml/scripts/train_dp_model.py
   output_dir: seml/output/logs/pspnet_a2d2
   name: pspnet_a2d2_experiments
@@ -15,7 +15,7 @@ slurm:
 fixed:
   model_name: "pspnet"
   dataset_name: "a2d2"
-  dataset_root: "/nfs/students/anon/camera_lidar_semantic"
+  dataset_root: "/nfs/students/duk/camera_lidar_semantic"
   
   max_physical_batch_size: 2
   clip_norm: 2.0
@@ -29,7 +29,7 @@ fixed:
   
   check_val_every_n_epoch: 2
   num_sanity_val_steps: 0
-  checkpoint_dir: "/nfs/students/anon/checkpoints"
+  checkpoint_dir: "/nfs/students/duk/checkpoints"
 
 grid:
   epsilon:
