@@ -36,18 +36,41 @@ class A2D2Config(DatasetConfig):
     def get_dataset_class(self) -> Type[Dataset]:
         return A2D2Dataset
     
-    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None) -> Any:
+    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None, padding: int = 0, gaussian_augmentation: bool = False, gaussian_noise_std: float = None) -> Any:
         """Get transforms for A2D2."""
         if crop_size is None:
             crop_size = self.crop_size
-            
+
         if mode == "train":
-            return et.ExtCompose([
-                et.ExtRandomHorizontalFlip(),
-                et.ExtRandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
-                et.ExtToTensor(),
-                et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            ])
+            if gaussian_augmentation:
+                if gaussian_noise_std is None:
+                    raise ValueError("gaussian_noise_std must be provided when gaussian_augmentation=True")
+
+                noise_std_normalized = gaussian_noise_std / 255.0
+
+                image_h, image_w = self.image_size
+                needs_crop = (crop_size < image_h or crop_size < image_w)
+
+                if needs_crop:
+                    return et.ExtCompose([
+                        et.ExtRandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
+                        et.ExtToTensor(),
+                        et.ExtGaussianNoise(std=noise_std_normalized),
+                        et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ])
+                else:
+                    return et.ExtCompose([
+                        et.ExtToTensor(),
+                        et.ExtGaussianNoise(std=noise_std_normalized),
+                        et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ])
+            else:
+                return et.ExtCompose([
+                    et.ExtRandomHorizontalFlip(),
+                    et.ExtRandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
+                    et.ExtToTensor(),
+                    et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ])
         elif mode in ("val", "test"):
             return et.ExtCompose([
                 et.ExtToTensor(),
@@ -55,7 +78,7 @@ class A2D2Config(DatasetConfig):
             ])
         else:
             raise ValueError(f"Unknown transform mode: {mode}")
-    
+                  
     def map_split(self, split: str) -> str:
         """Map common split names to A2D2-specific names."""
         split_mapping = {

@@ -296,6 +296,41 @@ class ExtToTensor(object):
     def __repr__(self):
         return self.__class__.__name__ + '()'
 
+
+class ExtGaussianNoise(object):
+    """Add Gaussian noise to tensor image.
+    Args:
+        std: Standard deviation of the Gaussian noise. 
+             Since images are in [0, 1] range after ToTensor, this should be scaled appropriately.
+        mean: Mean of the Gaussian noise (default: 0.0)
+    """
+    def __init__(self, std: float, mean: float = 0.0):
+        self.std = std
+        self.mean = mean
+    
+    def __call__(self, img, lbl):
+        """
+        Args:
+            img (Tensor): Image tensor in range [0, 1] to add noise to
+            lbl (Tensor): Label tensor (not modified)
+        Returns:
+            Tensor: Image with added Gaussian noise (clipped to [0, 1])
+            Tensor: Label (unchanged)
+        """
+        if not torch.is_tensor(img):
+            raise TypeError('ExtGaussianNoise expects tensor input after ExtToTensor')
+        
+        noise = torch.randn_like(img) * self.std + self.mean
+        noisy_img = img + noise
+        
+        noisy_img = torch.clamp(noisy_img, 0.0, 1.0)
+        
+        return noisy_img, lbl
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
+
 class ExtNormalize(object):
     """Normalize a tensor image with mean and standard deviation.
     Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform

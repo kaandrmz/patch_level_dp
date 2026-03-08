@@ -88,11 +88,18 @@ def run(
     batch_sampling_prob: float = None,
     delta: float = None,
     baseline_privacy: bool = False,
+    gaussian_augmentation: bool = False,
     pretrained: bool = False,
-    seed_value: int = 516,
+    seed: int = 516,
     checkpoint_dir: str = "/nfs/students/duk/checkpoints",
     check_val_every_n_epoch: int = 2,
     num_sanity_val_steps: int = 0,
+    lr_scheduler: str = None,
+    small_input: bool = False,
+    dropout_rate: float = 0.0,
+    freeze_mode: str = "none",
+    freeze_k: int = 1,
+    weight_decay: float = 0.0,
     **kwargs
 ) -> Dict[str, Any]:
     """Main SEML experiment function for training DP classification models."""
@@ -104,8 +111,16 @@ def run(
     print(f"Clip norm: {clip_norm}, Max physical batch size: {max_physical_batch_size}")
     print(f"Privacy patch size: {privacy_patch_size}")
     print(f"Baseline privacy: {baseline_privacy}")
+    print(f"Gaussian augmentation: {gaussian_augmentation}")
     print(f"Pretrained: {pretrained}")
-    print(f"Seed: {seed_value}")
+    print(f"Seed: {seed}")
+    print(f"LR scheduler: {lr_scheduler}")
+    print(f"Small input (3x3 conv): {small_input}")
+    print(f"Dropout rate: {dropout_rate}")
+    print(f"Freeze mode: {freeze_mode}")
+    if freeze_mode == "last_k":
+        print(f"Freeze k: {freeze_k}")
+    print(f"Weight decay: {weight_decay}")
     
     train_params = init_privacy_kwargs(
         model_name=model_name,
@@ -121,11 +136,18 @@ def run(
         crop_size=crop_size,
         padding=padding,
         baseline_privacy=baseline_privacy,
+        gaussian_augmentation=gaussian_augmentation,
         pretrained=pretrained,
-        seed_value=seed_value,
+        seed_value=seed,
         checkpoint_dir=checkpoint_dir,
         check_val_every_n_epoch=check_val_every_n_epoch,
         num_sanity_val_steps=num_sanity_val_steps,
+        lr_scheduler=lr_scheduler,
+        small_input=small_input,
+        dropout_rate=dropout_rate,
+        freeze_mode=freeze_mode,
+        freeze_k=freeze_k,
+        weight_decay=weight_decay,
         **kwargs
     )
     

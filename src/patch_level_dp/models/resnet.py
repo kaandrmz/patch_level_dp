@@ -46,12 +46,18 @@ class ResNetArchitecture(ModelArchitecture):
             **kwargs: Additional parameters:
                 - pretrained (bool): Use pretrained ImageNet weights (default: False)
                 - weights (str): Specific weights to load (e.g., "IMAGENET1K_V1")
+                - small_input (bool): Use 3x3 conv instead of 7x7 in first layer (default: False)
+                - freeze_mode (str): Freezing strategy - "none", "backbone", or "last_k" (default: "none")
+                - freeze_k (int): Number of last layers to train when freeze_mode="last_k" (default: 1)
             
         Returns:
             ResNet model instance with modified final layer
         """
-        pretrained = kwargs.get("pretrained", False)  # Train from scratch by default
+        pretrained = kwargs.get("pretrained", False)
         weights = kwargs.get("weights", None)
+        small_input = kwargs.get("small_input", False)
+        freeze_mode = kwargs.get("freeze_mode", "none")
+        freeze_k = kwargs.get("freeze_k", 1)
         
         # Get the model constructor
         model_fn = self._model_map[self.variant]
@@ -65,12 +71,25 @@ class ResNetArchitecture(ModelArchitecture):
         else:
             model = model_fn(weights=None)
         
+        # Replace 7x7 conv with 3x3 conv
+        if small_input:
+            model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1, bias=False)
+            print("Using small input mode: 3x3 conv (stride 2, keeping maxpool)")
+        
         # Replace final fully connected layer for target num_classes
         in_features = model.fc.in_features
         model.fc = nn.Linear(in_features, num_classes)
         
         pretrained_str = "pretrained" if pretrained else "from scratch"
         print(f"Successfully initialized {self.variant} ({pretrained_str}) with {num_classes} output classes.")
+        
+        # Apply freezing strategy
+        if freeze_mode == "backbone":
+            self._freeze_backbone(model)
+        elif freeze_mode == "last_k":
+            self._freeze_except_last_k_layers(model, k=freeze_k)
+        elif freeze_mode != "none":
+            print(f"Warning: Unknown freeze_mode '{freeze_mode}', training all layers")
         
         return model
     
@@ -95,4 +114,78 @@ class ResNetArchitecture(ModelArchitecture):
     def requires_interpolation(self) -> bool:
         # Classification models don't need interpolation
         return False
-
+    
+    def _freeze_backbone(self, model: nn.Module) -> nn.Module:
+        """Freeze all layers except the final classification head.
+        
+        Args:
+            model: ResNet model instance
+            
+        Returns:
+            Model with frozen backbone
+        """
+        # Freeze all parameters
+        for param in model.parameters():
+            param.requires_grad = False
+        
+        # Unfreeze the final classification head (fc layer)
+        for param in model.fc.parameters():
+            param.requires_grad = True
+        
+        # Count trainable parameters
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        total_params = sum(p.numel() for p in model.parameters())
+        
+        print(f"Frozen all layers except final FC layer")
+        print(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100*trainable_params/total_params:.2f}%)")
+        
+        return model
+    
+    def _freeze_except_last_k_layers(self, model: nn.Module, k: int = 1) -> nn.Module:
+        """Freeze all layers except the last k residual blocks and FC layer.
+        
+        Args:
+            model: ResNet model instance
+            k: Number of last residual blocks to train (1-4)
+                k=1: train layer4 + fc
+                k=2: train layer3 + layer4 + fc
+                k=3: train layer2 + layer3 + layer4 + fc
+                k=4: train layer1 + layer2 + layer3 + layer4 + fc
+        
+        Returns:
+            Model with partially frozen backbone
+        """
+        # Freeze all parameters first
+        for param in model.parameters():
+            param.requires_grad = False
+        
+        # Define layers to unfreeze based on k
+        layers_to_unfreeze = []
+        if k >= 4:
+            layers_to_unfreeze.append('layer1')
+        if k >= 3:
+            layers_to_unfreeze.append('layer2')
+        if k >= 2:
+            layers_to_unfreeze.append('layer3')
+        if k >= 1:
+            layers_to_unfreeze.append('layer4')
+        
+        # Unfreeze selected layers
+        for layer_name in layers_to_unfreeze:
+            layer = getattr(model, layer_name)
+            for param in layer.parameters():
+                param.requires_grad = True
+        
+        # Always unfreeze the final FC layer
+        for param in model.fc.parameters():
+            param.requires_grad = True
+        
+        # Count trainable parameters
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        total_params = sum(p.numel() for p in model.parameters())
+        
+        trainable_layers = ', '.join(layers_to_unfreeze + ['fc'])
+        print(f"Frozen backbone except: {trainable_layers}")
+        print(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100*trainable_params/total_params:.2f}%)")
+        
+        return model

@@ -8,13 +8,13 @@ slurm:
   # Image size 1000x1000 with crop sizes up to 700
   - experiments_per_job: 5
     sbatch_options:
-      cpus-per-task: 5
+      cpus-per-task: 8
       time: 01-12:00
       partition: cpu_large
   # Image size 1000x2000 with crop sizes up to 1000
   - experiments_per_job: 5
     sbatch_options:
-      cpus-per-task: 5
+      cpus-per-task: 8
       time: 01-12:00
       partition: cpu_large
 

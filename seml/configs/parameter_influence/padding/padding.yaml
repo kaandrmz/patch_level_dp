@@ -7,7 +7,7 @@ seml:
 slurm:
   - experiments_per_job: 5
     sbatch_options:
-      cpus-per-task: 5
+      cpus-per-task: 8
       time: 00-02:00
       partition: cpu_large
 

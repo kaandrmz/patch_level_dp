@@ -5,11 +5,12 @@ seml:
   name: privacy_profile_experiments
 
 slurm:
-  - experiments_per_job: 3
+  - experiments_per_job: 1
     sbatch_options:
       cpus-per-task: 8
-      time: 01-12:00     # max time, D-HH:MM
-      partition: cpu_large
+      mem: 128G
+      time: 02-12:00     # max time, D-HH:MM
+      partition: cpu_all
 
 fixed:
   experiment_set: "main"
@@ -22,31 +23,33 @@ fixed:
   
   epsilon_min: 0.1
   epsilon_max: 1000.0
-  epsilon_num_points: 50
+  epsilon_num_points: 30
 
 grid:
   crop_size:
     type: choice
     options:
       - 100
-      - 200
-      - 400
 
   private_patch_size:
     type: choice
     options:
       - 10
-      - 20
-      - 40
 
   noise_level:
     type: choice
     options:
       - 1.0
-      - 2.0
-      - 4.0
 
   sigma_data:
     type: choice
     options:
       - 1000.0
+
+  priv_patch_shape:
+    type: choice
+    options:
+      - square
+      - rectangle
+      - circle
+      - cluster 

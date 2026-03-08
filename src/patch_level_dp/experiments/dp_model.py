@@ -22,7 +22,7 @@ from ..data import get_dataset_config, DatasetConfig
 from ..models import get_model_architecture, ModelArchitecture  
 from ..privacy import (
     setup_dp_model, setup_dp_optimizer, setup_batch_memory_manager,
-    calc_noise, create_pld, calc_sampling_prob
+    calc_noise, create_pld, calc_sampling_prob,
 )
 
 
@@ -65,6 +65,8 @@ class DPSegmentationModel(L.LightningModule):
         lr: float = 0.01,
         standard_deviation: Optional[float] = None,
         baseline_privacy: bool = False,
+        gaussian_augmentation: bool = False,
+        load_pretrained_backbone: bool = True,
         **model_kwargs
     ):
         """Initialize generic DP segmentation model.
@@ -81,12 +83,14 @@ class DPSegmentationModel(L.LightningModule):
             clip_norm: Gradient clipping norm
             num_queries: Number of privacy queries
             train_loader: Training data loader
-            crop_size: Crop size for training
+            crop_size: Crop size for training (ignored if gaussian_augmentation=True)
             privacy_patch_size: Size of privacy-sensitive patches
             padding: Padding for images
             lr: Learning rate
             standard_deviation: Fixed noise level (if None, calculated from epsilon)
             baseline_privacy: If True, uses baseline privacy settings
+            gaussian_augmentation: If True, uses Gaussian data augmentation baseline (Schuchardt et al. 2025)
+            load_pretrained_backbone: If True, loads ImageNet pretrained weights (set False when loading from checkpoint)
             **model_kwargs: Additional model-specific arguments
         """
         super().__init__()
@@ -102,7 +106,12 @@ class DPSegmentationModel(L.LightningModule):
             **model_kwargs
         )
         
-        self._setup_pretrained_backbone()
+        # Only load pretrained backbone if explicitly requested (skip when loading from checkpoint)
+        if load_pretrained_backbone:
+            self._setup_pretrained_backbone()
+        else:
+            print("Skipping pretrained backbone loading (loading from checkpoint)")
+            
         self._setup_batchnorm_for_dp()
         
         self.train_evaluator = StreamSegMetrics(self.dataset_config.num_classes)
@@ -114,7 +123,7 @@ class DPSegmentationModel(L.LightningModule):
         self._setup_privacy_parameters(
             epsilon, delta, sensitivity, batch_sampling_prob, 
             num_queries, crop_size, privacy_patch_size, padding, standard_deviation,
-            baseline_privacy
+            baseline_privacy, gaussian_augmentation
         )
         
         self.hparams.max_physical_batch_size = max_physical_batch_size
@@ -153,7 +162,7 @@ class DPSegmentationModel(L.LightningModule):
     def _setup_privacy_parameters(
         self, epsilon, delta, sensitivity, batch_sampling_prob, 
         num_queries, crop_size, privacy_patch_size, padding, standard_deviation,
-        baseline_privacy
+        baseline_privacy, gaussian_augmentation
     ):
         """Setup privacy parameters and calculations."""
         if standard_deviation is None:
@@ -168,6 +177,7 @@ class DPSegmentationModel(L.LightningModule):
                 private_patch_size=privacy_patch_size,
                 padding=padding,
                 baseline_privacy=baseline_privacy,
+                gaussian_augmentation=gaussian_augmentation,
             )
         else:
             self.standard_deviation = standard_deviation
@@ -178,6 +188,8 @@ class DPSegmentationModel(L.LightningModule):
                 padding=padding,
                 batch_sampling_prob=batch_sampling_prob,
                 baseline_privacy=baseline_privacy,
+                gaussian_augmentation=gaussian_augmentation,
+                gaussian_augmentation_sigma=standard_deviation,
             )
 
         print(f"STANDARD_DEVIATION: {self.standard_deviation}")
@@ -279,6 +291,10 @@ class DPSegmentationModel(L.LightningModule):
         print(f"Validation - Overall Acc: {score['Overall Acc']:.4f}, Mean IoU: {score['Mean IoU']:.4f}")
         self.val_evaluator.reset()
 
+    def on_test_epoch_start(self):
+        """Reset metrics at start of test epoch."""
+        self.test_evaluator.reset()
+    
     def test_step(self, batch, batch_idx):
         """Test step."""
         x, labels = batch

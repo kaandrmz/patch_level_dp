@@ -1,12 +1,13 @@
 """DP classification model using Lightning."""
 
 import math
-from typing import Tuple, Optional, Any
+from typing import Tuple, Optional, Any, Literal
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, MultiStepLR
 
 import lightning as L
 
@@ -16,12 +17,12 @@ from ..data import get_classification_dataset_config
 from ..models import get_model_architecture
 from ..privacy import (
     setup_dp_model, setup_dp_optimizer, setup_batch_memory_manager,
-    calc_noise, create_pld, calc_sampling_prob
+    calc_noise, create_pld, calc_sampling_prob,
 )
 
 
 class DPClassificationModel(L.LightningModule):
-    """DP classification model supporting ResNet, SimpleConv, etc."""
+    """DP classification model supporting ResNet, VGG, etc."""
     
     def __init__(
         self,
@@ -43,12 +44,18 @@ class DPClassificationModel(L.LightningModule):
         momentum: float = 0.9,
         standard_deviation: Optional[float] = None,
         baseline_privacy: bool = False,
+        gaussian_augmentation: bool = False,
+        lr_scheduler: Optional[Literal["cosine", "step", "multistep"]] = None,
+        lr_scheduler_step_size: int = 30,
+        lr_scheduler_gamma: float = 0.1,
+        lr_scheduler_milestones: Optional[Tuple[int, ...]] = None,
+        num_epochs: int = 100,
         **model_kwargs
     ):
         """Initialize DP classification model.
         
         Args:
-            model_name: Model architecture name (e.g., "resnet18", "simpleconv")
+            model_name: Model architecture name (e.g., "resnet18", "vgg16")
             dataset_name: Dataset name (e.g., "mnist", "dtd")
             epsilon: Privacy budget epsilon
             delta: Privacy budget delta
@@ -66,6 +73,11 @@ class DPClassificationModel(L.LightningModule):
             momentum: SGD momentum factor
             standard_deviation: Fixed noise level (if None, calculated from epsilon)
             baseline_privacy: If True, uses baseline privacy settings
+            lr_scheduler: Type of LR scheduler ("cosine", "step", "multistep", or None)
+            lr_scheduler_step_size: Step size for StepLR scheduler
+            lr_scheduler_gamma: Multiplicative factor for LR decay
+            lr_scheduler_milestones: Epochs at which to decay LR for MultiStepLR
+            num_epochs: Total number of training epochs (needed for CosineAnnealingLR)
             **model_kwargs: Additional model-specific arguments
         """
         super().__init__()
@@ -76,6 +88,7 @@ class DPClassificationModel(L.LightningModule):
         self.save_hyperparameters(ignore=["train_loader"])
         self.automatic_optimization = False
         
+        model_kwargs["input_size"] = crop_size
         self.model = self.model_arch.create_model(
             num_classes=self.dataset_config.num_classes,
             **model_kwargs
@@ -94,34 +107,28 @@ class DPClassificationModel(L.LightningModule):
         setup_dp_model(self.model)
         
         self._setup_privacy_parameters(
-            epsilon, delta, sensitivity, batch_sampling_prob, 
+            epsilon, delta, sensitivity, batch_sampling_prob,
             num_queries, crop_size, privacy_patch_size, padding, standard_deviation,
-            baseline_privacy
-        )
-        
+            baseline_privacy, gaussian_augmentation
+        )        
         self.hparams.max_physical_batch_size = max_physical_batch_size
         self.hparams.batch_size = batch_size
         self.hparams.delta = delta
         self.train_loader = train_loader
     
     def _setup_batchnorm_for_dp(self):
-        """Remove BatchNorm layers for DP compatibility by replacing with Identity.""" # vs freezing bc training from scratch
-        print("Removing all BatchNorm2d layers (replacing with Identity)...")
+        """Freeze BatchNorm layers for DP compatibility."""
+        print("Freezing all BatchNorm2d layers...")
         for name, module in self.model.named_modules():
             if isinstance(module, nn.BatchNorm2d):
-                parts = name.rsplit('.', 1)
-                if len(parts) == 2:
-                    parent_name, attr_name = parts
-                    parent = self.model.get_submodule(parent_name)
-                else:
-                    parent = self.model
-                    attr_name = name
-                setattr(parent, attr_name, nn.Identity())
+                module.eval()
+                for param in module.parameters():
+                    param.requires_grad = False
     
     def _setup_privacy_parameters(
-        self, epsilon, delta, sensitivity, batch_sampling_prob, 
+        self, epsilon, delta, sensitivity, batch_sampling_prob,
         num_queries, crop_size, privacy_patch_size, padding, standard_deviation,
-        baseline_privacy
+        baseline_privacy, gaussian_augmentation
     ):
         """Setup privacy parameters and calculations."""
         if standard_deviation is None:
@@ -136,6 +143,7 @@ class DPClassificationModel(L.LightningModule):
                 private_patch_size=privacy_patch_size,
                 padding=padding,
                 baseline_privacy=baseline_privacy,
+                gaussian_augmentation=gaussian_augmentation,
             )
         else:
             self.standard_deviation = standard_deviation
@@ -146,6 +154,8 @@ class DPClassificationModel(L.LightningModule):
                 padding=padding,
                 batch_sampling_prob=batch_sampling_prob,
                 baseline_privacy=baseline_privacy,
+                gaussian_augmentation=gaussian_augmentation,
+                gaussian_augmentation_sigma=standard_deviation,
             )
 
         print(f"STANDARD_DEVIATION: {self.standard_deviation}")
@@ -259,15 +269,49 @@ class DPClassificationModel(L.LightningModule):
         print(f"Test - Accuracy: {test_acc:.4f} ({self.test_correct}/{self.test_total})")
 
     def configure_optimizers(self):
-        """Configure optimizers for DP training."""
+        """Configure optimizers and LR scheduler for DP training."""
         trainable_params = [p for p in self.model.parameters() if p.requires_grad]
-        # optimizer = optim.SGD(trainable_params, lr=self.hparams.lr, momentum=self.hparams.momentum)
-        optimizer = optim.Adam(trainable_params, lr=self.hparams.lr)
+        weight_decay = getattr(self.hparams, 'weight_decay', 0)
+        optimizer = optim.SGD(trainable_params, lr=self.hparams.lr, momentum=self.hparams.momentum, weight_decay=weight_decay)
         self.optimizer = setup_dp_optimizer(
             optimizer,
-            # noise_multiplier=self.standard_deviation,
-            noise_multiplier=0.0, # if you wanna make non dp
+            noise_multiplier=self.standard_deviation,
             max_grad_norm=self.hparams.clip_norm,
             expected_batch_size=self.hparams.batch_size,
         )
-        return self.optimizer
+        
+        # Setup LR scheduler if specified
+        if self.hparams.lr_scheduler is None:
+            return self.optimizer
+        
+        if self.hparams.lr_scheduler == "cosine":
+            scheduler = CosineAnnealingLR(
+                self.optimizer, 
+                T_max=self.hparams.num_epochs,
+                eta_min=0
+            )
+        elif self.hparams.lr_scheduler == "step":
+            scheduler = StepLR(
+                self.optimizer,
+                step_size=self.hparams.lr_scheduler_step_size,
+                gamma=self.hparams.lr_scheduler_gamma
+            )
+        elif self.hparams.lr_scheduler == "multistep":
+            milestones = self.hparams.lr_scheduler_milestones or (30, 60, 90)
+            scheduler = MultiStepLR(
+                self.optimizer,
+                milestones=list(milestones),
+                gamma=self.hparams.lr_scheduler_gamma
+            )
+        else:
+            raise ValueError(f"Unknown lr_scheduler: {self.hparams.lr_scheduler}")
+        
+        return {
+            "optimizer": self.optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "epoch",
+                "frequency": 1,
+            }
+        }
+

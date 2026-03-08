@@ -36,18 +36,55 @@ class CityscapesConfig(DatasetConfig):
     def get_dataset_class(self) -> Type[Dataset]:
         return Cityscapes
     
-    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None) -> Any:
-        """Get transforms for Cityscapes."""
+    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None, padding: int = 0, 
+                       gaussian_augmentation: bool = False, gaussian_noise_std: float = None) -> Any:
+        """Get transforms for Cityscapes.
+        
+        Args:
+            mode: "train", "val", or "test"
+            crop_size: Size for random cropping
+            padding: Padding for images
+            gaussian_augmentation: If True, uses Gaussian data augmentation baseline
+            gaussian_noise_std: Standard deviation for Gaussian noise (in [0, 255] scale)
+        """
         if crop_size is None:
             crop_size = self.crop_size
             
         if mode == "train":
-            return et.ExtCompose([
-                et.ExtRandomHorizontalFlip(),
-                et.ExtRandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
-                et.ExtToTensor(),
-                et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            ])
+            if gaussian_augmentation:
+                if gaussian_noise_std is None:
+                    raise ValueError("gaussian_noise_std must be provided when gaussian_augmentation=True")
+                
+                # Convert noise std from [0, 255] scale to [0, 1] scale (after ToTensor)
+                noise_std_normalized = gaussian_noise_std / 255.0
+                
+                # Check if we need cropping (crop_size < image dimensions)
+                image_h, image_w = self.image_size
+                needs_crop = (crop_size < image_h or crop_size < image_w)
+                
+                if needs_crop:
+                    # Crop first, then add noise to the cropped image
+                    return et.ExtCompose([
+                        et.ExtRandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
+                        et.ExtToTensor(),
+                        et.ExtGaussianNoise(std=noise_std_normalized),
+                        et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ])
+                else:
+                    # Use full images (no cropping)
+                    return et.ExtCompose([
+                        et.ExtToTensor(),
+                        et.ExtGaussianNoise(std=noise_std_normalized),
+                        et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ])
+            else:
+                # Standard training with cropping
+                return et.ExtCompose([
+                    et.ExtRandomHorizontalFlip(),
+                    et.ExtRandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
+                    et.ExtToTensor(),
+                    et.ExtNormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ])
         elif mode in ("val", "test"):
             return et.ExtCompose([
                 et.ExtToTensor(),

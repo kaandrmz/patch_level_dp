@@ -14,7 +14,7 @@ def get_pspnet_results():
                 'result.epsilon',
                 'result.test_miou',
                 'config.baseline_privacy',
-                'config.seed_value'
+                'config.seed'
             ],
             states=['COMPLETED'],
             to_data_frame=True

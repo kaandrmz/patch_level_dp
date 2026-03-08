@@ -4,6 +4,7 @@ from typing import Tuple, Type, Any, Optional, List
 
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
+import torchvision.transforms.v2 as transforms_v2
 from torchvision.datasets import DTD
 from PIL import Image
 
@@ -76,28 +77,44 @@ class DTDConfig(ClassificationDatasetConfig):
         # train: 1879 (1 dropped), val: 1878 (2 dropped), test: 1880 (0 dropped)
         return 1879
     
-    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None) -> Any:
+    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None, padding: int = 0,
+                        gaussian_augmentation: bool = False, gaussian_noise_std: float = None) -> Any:
         """Get transforms for DTD.
-        
+
         First center crops to image_size (300x300), then applies augmentation.
+        When gaussian_augmentation=True, uses minimal transforms (crop + noise only).
         """
         if crop_size is None:
             crop_size = self.crop_size
-        
-        image_size = self.image_size[0]  # 300
-            
+
+
         if mode == "train":
+            if gaussian_augmentation:
+                if gaussian_noise_std is None:
+                    raise ValueError("gaussian_noise_std must be provided when gaussian_augmentation=True")
+                noise_std_normalized = gaussian_noise_std / 255.0
+                return transforms.Compose([
+                    transforms.Resize((300, 300)),
+                    transforms.RandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
+                    transforms.ToTensor(),
+                    transforms_v2.GaussianNoise(mean=0.0, sigma=noise_std_normalized, clip=True),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ])
             return transforms.Compose([
-                # transforms.CenterCrop(image_size),  # Crop to 300x300 first
                 transforms.Resize((300, 300)),  # Resize to fixed size for batching
+                # transforms.RandomPerspective(distortion_scale=0.2, p=0.5),
+                transforms.RandomVerticalFlip(p=0.5),  # Safe for textures
                 transforms.RandomHorizontalFlip(),
-                # transforms.RandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
+                transforms.RandomRotation(degrees=180), # Full rotation
+                transforms.RandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
+                # transforms.RandomAffine(degrees=0, scale=(0.8, 1.2)),  # Random zoom (80-120%)
                 transforms.ToTensor(),
+                # transforms_v2.GaussianNoise(mean=0.0, sigma=0.02, clip=True),  # Slight Gaussian noise
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
         elif mode in ("val", "test"):
             return transforms.Compose([
-                # transforms.CenterCrop(image_size),  # Crop to 300x300
+                # transforms.CenterCrop(image_size),  # Crop to 
                 transforms.Resize((300, 300)),  # Resize to fixed size for batching
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),

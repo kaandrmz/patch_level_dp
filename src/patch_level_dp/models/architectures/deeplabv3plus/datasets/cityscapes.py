@@ -74,8 +74,11 @@ class Cityscapes(data.Dataset):
         self.root = os.path.expanduser(root)
         self.mode = 'gtFine'
         self.target_type = target_type
+        
+        if split == 'test':
+            split = 'val'
+        
         self.images_dir = os.path.join(self.root, 'leftImg8bit', split)
-
         self.targets_dir = os.path.join(self.root, self.mode, split)
         self.transform = transform
 
@@ -83,9 +86,8 @@ class Cityscapes(data.Dataset):
         self.images = []
         self.targets = []
 
-        if split not in ['train', 'test', 'val']:
-            raise ValueError('Invalid split for mode! Please use split="train", split="test"'
-                             ' or split="val"')
+        if split not in ['train', 'val']:
+            raise ValueError('Invalid split for mode! Please use split="train" or split="val".')
 
         if not os.path.isdir(self.images_dir) or not os.path.isdir(self.targets_dir):
             raise RuntimeError('Dataset not found or incomplete. Please make sure all required folders for the'

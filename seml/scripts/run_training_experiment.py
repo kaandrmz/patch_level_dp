@@ -1,4 +1,4 @@
-"""SEML script for training DP segmentation models with the new modular structure."""
+"""SEML script for training DP segmentation models."""
 
 import math
 from typing import Dict, Any
@@ -42,8 +42,6 @@ def init_privacy_kwargs(
     epoch_sizes = {
         "cityscapes": 2975,
         "a2d2": 18557,
-        "mnist": 60000,
-        "dtd": 1879,
     }
     
     epoch_size = epoch_sizes.get(dataset_name, 2975)
@@ -90,7 +88,8 @@ def run(
     batch_sampling_prob: float = None,
     delta: float = None,
     baseline_privacy: bool = False,
-    seed_value: int = 516,
+    gaussian_augmentation: bool = False,
+    seed: int = 516,
     checkpoint_dir: str = "/nfs/students/duk/checkpoints",
     check_val_every_n_epoch: int = 2,
     num_sanity_val_steps: int = 0,
@@ -105,8 +104,8 @@ def run(
     print(f"Clip norm: {clip_norm}, Max physical batch size: {max_physical_batch_size}")
     print(f"Privacy patch size: {privacy_patch_size}")
     print(f"Baseline privacy: {baseline_privacy}")
-    print(f"Seed: {seed_value}")
-    
+    print(f"Gaussian augmentation: {gaussian_augmentation}")
+    print(f"Seed: {seed}")
     train_params = init_privacy_kwargs(
         model_name=model_name,
         dataset_name=dataset_name,
@@ -121,7 +120,8 @@ def run(
         crop_size=crop_size,
         padding=padding,
         baseline_privacy=baseline_privacy,
-        seed_value=seed_value,
+        gaussian_augmentation=gaussian_augmentation,
+        seed_value=seed,
         checkpoint_dir=checkpoint_dir,
         check_val_every_n_epoch=check_val_every_n_epoch,
         num_sanity_val_steps=num_sanity_val_steps,

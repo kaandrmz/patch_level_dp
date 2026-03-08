@@ -1,8 +1,8 @@
 seml:
   project_root_dir: /nfs/homedirs/duk/patch_level_dp
   executable: seml/scripts/run_training_classification_experiment.py
-  output_dir: seml/output/logs/resnet_dtd_final
-  name: resnet_dtd_experiments_final
+  output_dir: seml/output/logs/vgg_dtd
+  name: vgg_dtd_experiments
 
 
 slurm:
@@ -14,16 +14,16 @@ slurm:
       partition: gpu_a100
 
 fixed:
-  model_name: "resnet18"
+  model_name: "vgg11"
   dataset_name: "dtd"
   dataset_root: "/nfs/homedirs/duk/dtd"
   pretrained: True
   
-  max_physical_batch_size: 32
+  max_physical_batch_size: 4
   
   privacy_patch_size: [5, 5]
   padding: 0
-  
+   
   check_val_every_n_epoch: 2
   num_sanity_val_steps: 0
   checkpoint_dir: "/nfs/students/duk/checkpoints"
@@ -50,7 +50,7 @@ grid:
   lr: 
     type: choice
     options:
-      - 0.01
+      - 0.002
     
   epsilon:
     type: choice
@@ -86,5 +86,9 @@ grid:
   batch_size:
     type: choice
     options:
-      - 128
-    
+      - 64
+
+  weight_decay:
+    type: choice
+    options:
+      - 1e-4

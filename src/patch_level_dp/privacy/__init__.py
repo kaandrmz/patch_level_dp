@@ -8,6 +8,7 @@ from .calculations import (
     calc_epsilon,
     calc_sampling_prob,
     calculate_delta_for_epsilon_multi,
+    calc_gaussian_tvd,
     SAMPLING_METHODS,
 )
 
@@ -29,6 +30,7 @@ from .dp_setup import (
 )
 
 
+
 __all__ = [
     "PLDAccountant",
     "calc_intersection_prob",
@@ -38,6 +40,7 @@ __all__ = [
     "get_smallest_noise_for_switching",
     "calc_sampling_prob",
     "calculate_delta_for_epsilon_multi",
+    "calc_gaussian_tvd",
     "SAMPLING_METHODS",
     "SwitchingPrivacyLoss",
     "PldPmf",

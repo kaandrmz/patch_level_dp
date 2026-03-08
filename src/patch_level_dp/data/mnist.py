@@ -4,6 +4,7 @@ from typing import Tuple, Type, Any, Optional
 
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
+import torchvision.transforms.v2 as transforms_v2
 from torchvision.datasets import MNIST
 
 from .base_classification import ClassificationDatasetConfig
@@ -36,30 +37,46 @@ class MNISTConfig(ClassificationDatasetConfig):
     def num_channels(self) -> int:
         return 1  # MNIST is grayscale
     
-    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None) -> Any:
+    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None, padding: int = 0,
+                        gaussian_augmentation: bool = False, gaussian_noise_std: float = None) -> Any:
         """Get transforms for MNIST.
-        
-        Converts grayscale to 3-channel for compatibility with pretrained models,
-        and applies standard ImageNet normalization.
+
+        Converts grayscale to 3-channel for compatibility with pretrained models.
+        When gaussian_augmentation=True, uses minimal transforms (crop + noise only).
+
+        Args:
+            mode: "train", "val", or "test"
+            crop_size: Size for random crop (only used in train mode)
+            padding: Padding to add around images (e.g., 2 to go from 28x28 to 32x32)
+            gaussian_augmentation: If True, uses Gaussian data augmentation baseline
+            gaussian_noise_std: Noise std in pixel space [0, 255] (required if gaussian_augmentation=True)
         """
         if crop_size is None:
             crop_size = self.crop_size
-            
+
+        transform_list = [transforms.Grayscale(num_output_channels=3)]  # Convert to RGB
+
+        # Add padding if specified (e.g., padding=2 makes 28x28 -> 32x32)
+        if padding > 0:
+            transform_list.append(transforms.Pad(padding))
+
         if mode == "train":
-            return transforms.Compose([
-                transforms.Grayscale(num_output_channels=3),  # Convert to RGB
-                transforms.RandomRotation(degrees=10),
-                transforms.RandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
-                transforms.ToTensor(),
-            ])
-        elif mode in ("val", "test"):
-            return transforms.Compose([
-                transforms.Grayscale(num_output_channels=3),  # Convert to RGB
-                transforms.ToTensor(),
-            ])
-        else:
-            raise ValueError(f"Unknown transform mode: {mode}")
-    
+            if gaussian_augmentation:
+                if gaussian_noise_std is None:
+                    raise ValueError("gaussian_noise_std must be provided when gaussian_augmentation=True")
+                noise_std_normalized = gaussian_noise_std / 255.0
+                transform_list.append(transforms.RandomCrop(size=(crop_size, crop_size), pad_if_needed=True))
+                transform_list.append(transforms.ToTensor())
+                transform_list.append(transforms_v2.GaussianNoise(mean=0.0, sigma=noise_std_normalized, clip=True))
+                return transforms.Compose(transform_list)
+            # transform_list.append(transforms.RandomRotation(degrees=10))
+            transform_list.append(transforms.RandomCrop(size=(crop_size, crop_size), pad_if_needed=True))
+            # transform_list.append(transforms.RandomHorizontalFlip())
+
+        transform_list.append(transforms.ToTensor())
+
+        return transforms.Compose(transform_list)
+
     def create_dataset(self, root: str, split: str, transform: Any = None, **kwargs) -> Dataset:
         """Create MNIST dataset instance.
         

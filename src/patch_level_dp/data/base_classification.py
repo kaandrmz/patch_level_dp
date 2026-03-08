@@ -43,7 +43,7 @@ class ClassificationDatasetConfig(ABC):
         return 3
     
     @abstractmethod
-    def get_transforms(self, mode: str = "train") -> Any:
+    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None, padding: int = 0) -> Any:
         """Get transforms for the specified mode.
         
         Args:

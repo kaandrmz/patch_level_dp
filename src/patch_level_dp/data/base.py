@@ -45,8 +45,14 @@ class DatasetConfig(ABC):
         pass
     
     @abstractmethod
-    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None) -> Any:
-        """Get transforms for the specified mode."""
+    def get_transforms(self, mode: str = "train", crop_size: Optional[int] = None, padding: int = 0) -> Any:
+        """Get transforms for the specified mode.
+        
+        Args:
+            mode: "train", "val", or "test"
+            crop_size: Size for random crop
+            padding: Padding to add around images
+        """
         pass
     
     @abstractmethod

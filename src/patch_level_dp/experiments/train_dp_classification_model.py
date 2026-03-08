@@ -35,6 +35,7 @@ def train_dp_classification_model(
     standard_deviation: Optional[float] = None,
     baseline_privacy: bool = False,
     resume_from_checkpoint: Optional[str] = None,
+    gaussian_augmentation: bool = False,
     seed_value: int = 516,
     checkpoint_dir: str = "/nfs/students/duk/checkpoints",
     check_val_every_n_epoch: int = 2,
@@ -44,7 +45,7 @@ def train_dp_classification_model(
     """Train a DP classification model.
     
     Args:
-        model_name: Model architecture name (e.g., "resnet18", "simpleconv")
+        model_name: Model architecture name (e.g., "resnet18", "vgg16")
         dataset_name: Dataset name (e.g., "mnist", "dtd")
         dataset_root: Root directory for dataset
         epsilon: Privacy budget epsilon
@@ -78,15 +79,58 @@ def train_dp_classification_model(
         available = list(ALL_DATASET_CONFIGS.keys())
         raise ValueError(f"Unknown dataset '{dataset_name}'. Available: {available}")
     dataset_config = ALL_DATASET_CONFIGS[dataset_name]()
+
+    # Pre-calculate noise std for Gaussian augmentation (needed before creating transforms)
+    calculated_noise_std = standard_deviation
+    if gaussian_augmentation and standard_deviation is None:
+        from ..privacy import calc_noise as privacy_calc_noise
+
+        epoch_size = dataset_config.epoch_size
+        if delta is None:
+            delta = 1.0 / (epoch_size ** 1.0)
+        if batch_sampling_prob is None:
+            batch_sampling_prob = batch_size / epoch_size
+
+        num_queries = math.ceil(epoch_size / batch_size) * num_epochs
+
+        calculated_noise_std, _ = privacy_calc_noise(
+            epsilon=epsilon,
+            delta=delta,
+            sensitivity=sensitivity,
+            batch_sampling_prob=batch_sampling_prob,
+            num_queries=num_queries,
+            image_size=dataset_config.image_size,
+            crop_size=crop_size,
+            private_patch_size=privacy_patch_size,
+            padding=padding,
+            baseline_privacy=False,
+            gaussian_augmentation=gaussian_augmentation,
+        )
+        print(f"Calculated noise std for Gaussian augmentation: {calculated_noise_std}")
+
+    gaussian_noise_std = calculated_noise_std if gaussian_augmentation else None
+
+    try:
+        train_transform = dataset_config.get_transforms(
+            mode="train", crop_size=crop_size, padding=padding,
+            gaussian_augmentation=gaussian_augmentation,
+            gaussian_noise_std=gaussian_noise_std,
+        )
+    except TypeError:
+        if gaussian_augmentation:
+            raise ValueError(
+                f"Dataset {dataset_name} does not support gaussian_augmentation mode. "
+                "Please update the dataset configuration to support the new parameters."
+            )
+        train_transform = dataset_config.get_transforms(mode="train", crop_size=crop_size, padding=padding)    
     
-    train_transform = dataset_config.get_transforms(mode="train", crop_size=crop_size)
     train_dataset = dataset_config.create_dataset(
         root=dataset_root,
         split="train", 
         transform=train_transform
     )
     
-    val_transform = dataset_config.get_transforms(mode="val")
+    val_transform = dataset_config.get_transforms(mode="val", padding=padding)
     val_dataset = dataset_config.create_dataset(
         root=dataset_root,
         split="val",
@@ -99,7 +143,8 @@ def train_dp_classification_model(
     assert isinstance(train_loader.batch_sampler, UniformWithoutReplacementSampler), \
         f"Expected UniformWithoutReplacementSampler but got {type(train_loader.batch_sampler).__name__}"
     
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    # Use max_physical_batch_size for validation to avoid OOM issues
+    val_loader = DataLoader(val_dataset, batch_size=max_physical_batch_size, shuffle=False)
     
     epoch_size = dataset_config.epoch_size
     
@@ -134,10 +179,12 @@ def train_dp_classification_model(
         privacy_patch_size=privacy_patch_size,
         padding=padding,
         lr=lr,
-        standard_deviation=standard_deviation,
+        standard_deviation=calculated_noise_std,
         baseline_privacy=baseline_privacy,
+        gaussian_augmentation=gaussian_augmentation,
+        num_epochs=num_epochs,
         **kwargs
-    )
+    )    
     
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir,
@@ -161,14 +208,15 @@ def train_dp_classification_model(
     print(f"Logging to: lightning_logs/{experiment_name}")
     
     trainer = L.Trainer(
-        accelerator="auto", 
-        devices="auto", 
-        strategy="auto", 
-        max_epochs=num_epochs, 
+        accelerator="auto",
+        devices="auto",
+        strategy="auto",
+        max_epochs=num_epochs,
         check_val_every_n_epoch=check_val_every_n_epoch,
         callbacks=[checkpoint_callback],
         logger=logger,
-        num_sanity_val_steps=num_sanity_val_steps
+        num_sanity_val_steps=num_sanity_val_steps,
+        enable_checkpointing=True,  # Explicitly enable (default anyway)
     )
     
     trainer.logger._log_graph = True
@@ -230,7 +278,7 @@ def test_dp_classification_model(
         transform=test_transform
     )
     
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=model.hparams.max_physical_batch_size, shuffle=False)
     
     trainer = L.Trainer(
         accelerator="auto",

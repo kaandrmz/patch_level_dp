@@ -1,6 +1,6 @@
 seml:
   project_root_dir: /nfs/homedirs/duk/patch_level_dp
-  executable: seml/scripts/train_dp_model.py
+  executable: seml/scripts/run_training_experiment.py
   output_dir: seml/output/logs/pspnet_cityscapes
   name: pspnet_cityscapes_experiments
 
@@ -8,9 +8,10 @@ slurm:
   - experiments_per_job: 1
     sbatch_options:
       gres: gpu:1
-      cpus-per-task: 5
-      time: 02-23:59     # max time, D-HH:MM
-      partition: gpu_gtx1080
+      cpus-per-task: 8
+      mem: 16G
+      time: 00-23:59     # max time, D-HH:MM
+      partition: gpu_a100
 
 fixed:
   model_name: "pspnet"
@@ -31,10 +32,13 @@ fixed:
   num_sanity_val_steps: 0
   checkpoint_dir: "/nfs/students/duk/checkpoints"
 
+  gaussian_augmentation: False # if set to True, baseline_privacy must be False
+
 grid:
   epsilon:
     type: choice
     options:
+      - 1
       - 5
       - 10
       - 15
@@ -48,7 +52,7 @@ grid:
       - 90
       - 100
 
-  seed_value:
+  seed:
     type: choice
     options:
       - 10
