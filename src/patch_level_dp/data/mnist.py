@@ -23,7 +23,7 @@ class MNISTConfig(ClassificationDatasetConfig):
     
     @property
     def crop_size(self) -> int:
-        return 24  # Smaller than image_size (28) for random crop augmentation
+        return 24
     
     @property
     def num_classes(self) -> int:
@@ -56,7 +56,6 @@ class MNISTConfig(ClassificationDatasetConfig):
 
         transform_list = [transforms.Grayscale(num_output_channels=3)]  # Convert to RGB
 
-        # Add padding if specified (e.g., padding=2 makes 28x28 -> 32x32)
         if padding > 0:
             transform_list.append(transforms.Pad(padding))
 
@@ -69,9 +68,7 @@ class MNISTConfig(ClassificationDatasetConfig):
                 transform_list.append(transforms.ToTensor())
                 transform_list.append(transforms_v2.GaussianNoise(mean=0.0, sigma=noise_std_normalized, clip=True))
                 return transforms.Compose(transform_list)
-            # transform_list.append(transforms.RandomRotation(degrees=10))
             transform_list.append(transforms.RandomCrop(size=(crop_size, crop_size), pad_if_needed=True))
-            # transform_list.append(transforms.RandomHorizontalFlip())
 
         transform_list.append(transforms.ToTensor())
 
@@ -89,7 +86,6 @@ class MNISTConfig(ClassificationDatasetConfig):
         Returns:
             MNIST Dataset instance
         """
-        # MNIST only has train/test splits, map val to test
         train = (split == "train")
         
         if transform is None:
@@ -104,4 +100,3 @@ class MNISTConfig(ClassificationDatasetConfig):
             download=download,
             **kwargs
         )
-

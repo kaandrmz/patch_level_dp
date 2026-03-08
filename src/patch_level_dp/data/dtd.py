@@ -73,7 +73,6 @@ class DTDConfig(ClassificationDatasetConfig):
     
     @property
     def epoch_size(self) -> int:
-        # Original: 1880 per split. After filtering (min dim < 300):
         # train: 1879 (1 dropped), val: 1878 (2 dropped), test: 1880 (0 dropped)
         return 1879
     
@@ -102,19 +101,15 @@ class DTDConfig(ClassificationDatasetConfig):
                 ])
             return transforms.Compose([
                 transforms.Resize((300, 300)),  # Resize to fixed size for batching
-                # transforms.RandomPerspective(distortion_scale=0.2, p=0.5),
                 transforms.RandomVerticalFlip(p=0.5),  # Safe for textures
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(degrees=180), # Full rotation
                 transforms.RandomCrop(size=(crop_size, crop_size), pad_if_needed=True),
-                # transforms.RandomAffine(degrees=0, scale=(0.8, 1.2)),  # Random zoom (80-120%)
                 transforms.ToTensor(),
-                # transforms_v2.GaussianNoise(mean=0.0, sigma=0.02, clip=True),  # Slight Gaussian noise
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
         elif mode in ("val", "test"):
             return transforms.Compose([
-                # transforms.CenterCrop(image_size),  # Crop to 
                 transforms.Resize((300, 300)),  # Resize to fixed size for batching
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),

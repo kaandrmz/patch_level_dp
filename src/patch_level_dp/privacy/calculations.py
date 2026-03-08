@@ -480,8 +480,6 @@ def calc_noise(
         upper_noise = 100000.0  # Very large noise
         tolerance = 0.01
         
-        print(f"Searching for noise level to achieve epsilon={epsilon} with delta={delta}...")
-        
         while upper_noise - lower_noise > tolerance:
             mid_noise = (lower_noise + upper_noise) / 2
             mid_epsilon, mid_sampling_prob = get_epsilon_for_noise(mid_noise)
@@ -493,7 +491,6 @@ def calc_noise(
         
         final_noise = (lower_noise + upper_noise) / 2
         final_epsilon, final_sampling_prob = get_epsilon_for_noise(final_noise)
-        print(f"Found noise level: {final_noise:.4f} (achieved epsilon: {final_epsilon:.4f})")
         
         return final_noise, final_sampling_prob
     
@@ -614,10 +611,6 @@ def _calc_sampling_prob(
         
         sampling_prob = batch_sampling_prob * tvd
         
-        print(f"Gaussian data augmentation baseline (Schuchardt et al. 2025)")
-        print(f"Using {size_description}, Max L2 change: {max_l2_change:.2f}")
-        print(f"Noise sigma: {gaussian_augmentation_sigma:.4f}, TVD: {tvd:.6f}")
-        print(f"Effective Sampling Probability: {sampling_prob:.6f}")
         return sampling_prob
     
     # MODE 3: PATCH-LEVEL DP (our method)

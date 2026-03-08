@@ -1,7 +1,6 @@
 """Common utilities for parameter dependency experiments."""
 
 import math
-# from patch_level_dp.privacy.calculations import calc_intersection_prob, create_pld
 
 
 def calculate_common_parameters(image_size, clip_norm, batch_size, epoch_size, num_epochs):
