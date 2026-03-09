@@ -1,5 +1,5 @@
 seml:
-  project_root_dir: /nfs/homedirs/duk/patch_level_dp
+  project_root_dir: /path/patch_level_dp
   executable: seml/scripts/run_training_classification_experiment.py
   output_dir: seml/output/logs/vgg_mnist
   name: vgg_mnist_experiments
@@ -16,7 +16,7 @@ slurm:
 fixed:
   model_name: "vgg11"
   dataset_name: "mnist"
-  dataset_root: "/nfs/shared/data"
+  dataset_root: "/path/data"
   pretrained: False
   small_input: True
   
@@ -27,7 +27,7 @@ fixed:
   
   check_val_every_n_epoch: 2
   num_sanity_val_steps: 0
-  checkpoint_dir: "/nfs/students/duk/checkpoints"
+  checkpoint_dir: "/path/checkpoints"
   
 grid:
   clip_norm:

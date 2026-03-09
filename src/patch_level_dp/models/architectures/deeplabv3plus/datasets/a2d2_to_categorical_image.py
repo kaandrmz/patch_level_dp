@@ -47,7 +47,7 @@ def process_single_label(label_path, reduced_mapping):
 if __name__ == "__main__":
     mp.set_start_method('forkserver', force=True)
 
-    data_path="/nfs/students/duk/camera_lidar_semantic"
+    data_path="/path/camera_lidar_semantic"
     
     class_list_file = os.path.join(data_path, "class_list.json")
     with open(class_list_file, "r") as f:

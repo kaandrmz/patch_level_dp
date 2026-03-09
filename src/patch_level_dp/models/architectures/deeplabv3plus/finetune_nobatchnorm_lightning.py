@@ -322,8 +322,8 @@ class BestmIoUCheckpoint(ModelCheckpoint):
 def train_model(
     num_epochs=NUM_EPOCHS, 
     crop_size=CROP_SIZE,
-    dataset_root='/nfs/shared/cityscapes',
-    pretrained_model_path="/nfs/students/duk/data/best_deeplabv3plus_resnet101_cityscapes_os16.pth.tar",
+    dataset_root='/path/cityscapes',
+    pretrained_model_path="/path/data/best_deeplabv3plus_resnet101_cityscapes_os16.pth.tar",
     learning_rate=0.01,
     output_stride=8,
     batch_size=BATCH_SIZE,

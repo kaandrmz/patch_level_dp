@@ -91,7 +91,7 @@ def run(
     gaussian_augmentation: bool = False,
     pretrained: bool = False,
     seed: int = 516,
-    checkpoint_dir: str = "/nfs/students/duk/checkpoints",
+    checkpoint_dir: str = "/path/checkpoints",
     check_val_every_n_epoch: int = 2,
     num_sanity_val_steps: int = 0,
     lr_scheduler: str = None,
